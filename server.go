@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"strings"
-
 	"github.com/duo-labs/webauthn.io/session"
 	"github.com/duo-labs/webauthn/webauthn"
 	"github.com/gorilla/mux"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os/exec"
+	"strings"
+	"time"
 )
 
 var webAuthn *webauthn.WebAuthn
@@ -20,9 +23,9 @@ func main() {
 
 	var err error
 	webAuthn, err = webauthn.New(&webauthn.Config{
-		RPDisplayName: "Foobar Corp.", // display name for your site
-		RPID:          "localhost",    // generally the domain name for your site
-		RPOrigin:      "http://localhost:8080",
+		RPDisplayName: "Foobar Corp.",         // display name for your site
+		RPID:          "stammdisch.zapto.org", // generally the domain name for your site
+		RPOrigin:      "https://stammdisch.zapto.org:29336",
 	})
 
 	if err != nil {
@@ -42,13 +45,17 @@ func main() {
 	r.HandleFunc("/register/finish/{username}", FinishRegistration).Methods("POST")
 	r.HandleFunc("/login/begin/{username}", BeginLogin).Methods("GET")
 	r.HandleFunc("/login/finish/{username}", FinishLogin).Methods("POST")
+	r.HandleFunc("/restart", Restart).Methods("GET")
+	r.HandleFunc("/start/", Start).Methods("GET")
+	r.HandleFunc("/stop", Stop).Methods("GET")
+	r.HandleFunc("/checkAlive", CheckAlive).Methods("GET")
 
 	r.PathPrefix("/internal/").HandlerFunc(GetData)
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web")))
 
-	serverAddress := ":8080"
+	serverAddress := ":29336"
 	log.Println("starting server at", serverAddress)
-	log.Fatal(http.ListenAndServe(serverAddress, r))
+	log.Fatal(http.ListenAndServeTLS(serverAddress, "./cert/server.crt", "./cert/server.key", r))
 }
 
 func BeginRegistration(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +105,12 @@ func jsonResponse(w http.ResponseWriter, d interface{}, c int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(c)
 	fmt.Fprintf(w, "%s", dj)
+}
+
+func textResponse(w http.ResponseWriter, data string, c int) {
+	w.Header().Set("Content-Type", "application/text")
+	w.WriteHeader(c)
+	fmt.Fprintf(w, "%s", data)
 }
 
 func FinishRegistration(w http.ResponseWriter, r *http.Request) {
@@ -204,18 +217,96 @@ func FinishLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("User " + username + " successfully Logged in.")
+
 	// handle successful login
 	jsonResponse(w, "Login Success", http.StatusOK)
 }
 
 func GetData(w http.ResponseWriter, r *http.Request) {
-	_, err := sessionStore.GetWebauthnSession("authentication", r)
-
-	if err != nil {
+	if _, err := sessionStore.GetWebauthnSession("authentication", r); err != nil {
 		log.Println(err)
 		w.WriteHeader(403)
 		return
 	}
 
-	fmt.Println("GetData")
+	fileName := strings.Split(r.RequestURI, "/")
+	data, err := ioutil.ReadFile("web/" + r.RequestURI)
+	if err != nil {
+		w.WriteHeader(501)
+		return
+	}
+	http.ServeContent(w, r, fileName[len(fileName)-1], time.Now(), bytes.NewReader(data))
+}
+
+func Start(w http.ResponseWriter, r *http.Request) {
+	_, err := sessionStore.GetWebauthnSession("authentication", r)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(403)
+		return
+	}
+	//TODO: Log which user executed command
+	cmd := exec.Command("~/minecraft/checkalive.sh")
+	stdout, errCmd := cmd.Output()
+	if errCmd != nil {
+		log.Println(errCmd)
+	}
+	log.Print("Stdout: ")
+	log.Println(stdout)
+	textResponse(w, string(stdout), http.StatusOK)
+}
+
+func Stop(w http.ResponseWriter, r *http.Request) {
+	_, err := sessionStore.GetWebauthnSession("authentication", r)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(403)
+		return
+	}
+	//TODO: Log which user executed command
+	cmd := exec.Command("~/minecraft/checkalive.sh")
+	stdout, errCmd := cmd.Output()
+	if errCmd != nil {
+		log.Println(errCmd)
+	}
+	log.Print("Stdout: ")
+	log.Println(stdout)
+	textResponse(w, string(stdout), http.StatusOK)
+}
+
+func Restart(w http.ResponseWriter, r *http.Request) {
+	_, err := sessionStore.GetWebauthnSession("authentication", r)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(403)
+		return
+	}
+	//TODO: Log which user executed command
+	cmd := exec.Command("~/minecraft/checkalive.sh")
+	stdout, errCmd := cmd.Output()
+	if errCmd != nil {
+		log.Println(errCmd)
+	}
+	log.Print("Stdout: ")
+	log.Println(stdout)
+	textResponse(w, string(stdout), http.StatusOK)
+}
+
+func CheckAlive(w http.ResponseWriter, r *http.Request) {
+	_, err := sessionStore.GetWebauthnSession("authentication", r)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(403)
+		return
+	}
+	//TODO: Log which user executed command
+	cmd := exec.Command("~/minecraft/checkalive.sh")
+	stdout, errCmd := cmd.Output()
+	if errCmd != nil {
+		log.Println(errCmd)
+	}
+	log.Print("Stdout: ")
+	log.Println(stdout)
+	textResponse(w, string(stdout), http.StatusOK)
 }
