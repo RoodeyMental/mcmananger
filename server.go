@@ -45,10 +45,10 @@ func main() {
 	r.HandleFunc("/register/finish/{username}", FinishRegistration).Methods("POST")
 	r.HandleFunc("/login/begin/{username}", BeginLogin).Methods("GET")
 	r.HandleFunc("/login/finish/{username}", FinishLogin).Methods("POST")
-	r.HandleFunc("/restart", Restart).Methods("GET")
+	r.HandleFunc("/restart/", Restart).Methods("GET")
 	r.HandleFunc("/start/", Start).Methods("GET")
-	r.HandleFunc("/stop", Stop).Methods("GET")
-	r.HandleFunc("/checkAlive", CheckAlive).Methods("GET")
+	r.HandleFunc("/stop/", Stop).Methods("GET")
+	r.HandleFunc("/checkAlive/", CheckAlive).Methods("GET")
 
 	r.PathPrefix("/internal/").HandlerFunc(GetData)
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web")))
@@ -247,13 +247,13 @@ func Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//TODO: Log which user executed command
-	cmd := exec.Command("~/minecraft/checkalive.sh")
+	cmd := exec.Command("/bin/sh","../minecraft/start.sh")
 	stdout, errCmd := cmd.Output()
 	if errCmd != nil {
 		log.Println(errCmd)
 	}
 	log.Print("Stdout: ")
-	log.Println(stdout)
+	log.Println(string(stdout))
 	textResponse(w, string(stdout), http.StatusOK)
 }
 
@@ -265,7 +265,7 @@ func Stop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//TODO: Log which user executed command
-	cmd := exec.Command("~/minecraft/checkalive.sh")
+	cmd := exec.Command("/bin/sh", "../minecraft/stop.sh")
 	stdout, errCmd := cmd.Output()
 	if errCmd != nil {
 		log.Println(errCmd)
@@ -283,7 +283,7 @@ func Restart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//TODO: Log which user executed command
-	cmd := exec.Command("~/minecraft/checkalive.sh")
+	cmd := exec.Command("../minecraft/restart.sh")
 	stdout, errCmd := cmd.Output()
 	if errCmd != nil {
 		log.Println(errCmd)
@@ -301,7 +301,7 @@ func CheckAlive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//TODO: Log which user executed command
-	cmd := exec.Command("~/minecraft/checkalive.sh")
+	cmd := exec.Command("../minecraft/checkAlive.sh")
 	stdout, errCmd := cmd.Output()
 	if errCmd != nil {
 		log.Println(errCmd)
